@@ -174,13 +174,24 @@ above exists for completeness, not because it was ever exposed.
 - **OBS offline / obs-websocket refuses connections, and stays that way** —
   `docker compose logs obs` shows dbus warnings then just stops (no further
   output, container stays "Up" but nothing ever binds port 4455). Confirmed
-  cause in practice: OBS's persisted state in the `obs_config` volume got
-  corrupted by an unclean shutdown — most likely an abrupt power-cycle (e.g.
-  resizing the droplet), not a graceful `docker compose down`. The dbus
-  warnings themselves are red herrings; they're present on every boot,
-  successful or not. Fix — reset the volume and let OBS rebuild its scene
-  collection fresh via the API's bootstrap (loses any manual scene/source
-  customization, not the stream key or destination, which live in `.env`/DB):
+  root cause: OBS 30+ shows a "start in safe mode?" prompt after any shutdown
+  it doesn't consider clean (tracked via a `.sentinel` file in its config
+  dir) — and a container being killed/recreated is never OBS's own clean
+  UI-driven exit, so this could fire on *any* restart. That prompt is a
+  dialog with no way to answer it headlessly, hanging the process forever.
+  `--disable-shutdown-check` (already in `entrypoint.sh`) used to suppress
+  this but was removed in OBS 32.0, so it may be a silent no-op depending on
+  the version the PPA installs. **Fixed at the source**: `entrypoint.sh` now
+  deletes `$OBS_DIR/.sentinel` before every launch (OBS's own
+  community-recommended workaround for exactly this — an automated startup
+  script restarting it), so this shouldn't recur. The dbus warnings in the
+  log are unrelated noise either way; they're present on every boot,
+  successful or not.
+
+  If it still happens for some other reason, the escape hatch is resetting
+  OBS's whole persisted volume and letting it rebuild fresh via the API's
+  bootstrap (loses manual scene/source customization, not the stream key or
+  destination, which live in `.env`/DB):
   ```
   docker compose stop obs
   docker compose rm -f obs   # a *stopped* container still holds its volume —
@@ -189,11 +200,11 @@ above exists for completeness, not because it was ever exposed.
   docker volume rm irlkit_obs_config
   docker compose up -d obs
   ```
-  Confirm before assuming this is the cause — check that OBS is actually
-  hung, not just slow: `docker compose exec obs cat /proc/1/status | grep State`
-  and `docker stats --no-stream irlkit-obs-1`. Genuinely hung looks like state
-  `S` with 0% CPU sustained for a while; if CPU is active, it's just slow, and
-  resetting the volume won't help.
+  Confirm before assuming it's hung, not just slow:
+  `docker compose exec obs cat /proc/1/status | grep State` and
+  `docker stats --no-stream irlkit-obs-1`. Genuinely hung looks like state
+  `S` with 0% CPU sustained for a while; if CPU is active, it's just slow,
+  and resetting the volume won't help.
 - **Feed not showing in IRL scene** — confirm your `streamid` is
   `publish/live/<KEY>` and the key matches `.env`. Check `docker compose logs sls`.
 - **Dropped frames / congestion climbing** — CPU-bound. Move `ENCODER_PRESET` to

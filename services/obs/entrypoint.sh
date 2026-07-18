@@ -47,6 +47,21 @@ rm -f "/tmp/.X${DISPLAY#:}-lock"
 Xvfb "$DISPLAY" -screen 0 "${OUTPUT_WIDTH:-1920}x${OUTPUT_HEIGHT:-1080}x24" -nolisten tcp &
 for i in $(seq 1 30); do xdpyinfo -display "$DISPLAY" >/dev/null 2>&1 && break; sleep 0.2; done
 
+# ── OBS's own "unclean shutdown" sentinel ────────────────────────────────────
+# OBS writes $OBS_DIR/.sentinel on start and only deletes it on a clean exit;
+# if it's still there next boot, OBS shows a "start in safe mode?" prompt —
+# a dialog with no way to answer it headlessly, which hangs the whole process
+# forever (confirmed directly: 0% CPU, every thread parked, right after
+# "Could not create dbus connection", on literally every restart, not just
+# ones following an abrupt kill). --disable-shutdown-check below is meant to
+# suppress this but was removed in OBS 32.0, so it may be a silent no-op on
+# whatever version the PPA installs; deleting the sentinel ourselves is
+# OBS's own community-recommended workaround for exactly this — an automated
+# startup script that kills OBS and restarts it — and works regardless of
+# version. A container restart/recreate is never OBS's own clean UI-driven
+# exit, so without this, the prompt (and hang) can fire on every boot.
+rm -rf "$OBS_DIR/.sentinel"
+
 # ── Virtual audio (OBS needs a working PulseAudio graph) ─────────────────────
 export PULSE_SERVER=unix:/tmp/pulse.sock
 pulseaudio --exit-idle-time=-1 --disable-shm=1 \
