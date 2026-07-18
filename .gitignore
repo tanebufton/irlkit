@@ -2,6 +2,9 @@
 .env
 *.local
 
+# local Claude Code session settings (tool-permission grants, not project config)
+.claude/
+
 # node
 node_modules/
 dist/
