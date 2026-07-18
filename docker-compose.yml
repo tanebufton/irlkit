@@ -124,7 +124,12 @@ services:
       # Feed" media source (config.ts's ingestSrtUrl) — without this, it
       # silently falls back to the literal streamid "play/live/feed".
       STREAM_KEY: ${STREAM_KEY}
-      SLS_STATS_URL: http://sls:8181/stats
+      # SLS's bare /stats (no query param) requires an api_key we don't
+      # configure — 401s otherwise. ?publisher=<streamid> uses a different,
+      # unauthenticated code path scoped to just this one publisher, which is
+      # all a single-tenant appliance needs. Confirmed against the real
+      # source (src/srt-live-server.cpp's /stats handler).
+      SLS_STATS_URL: http://sls:8181/stats?publisher=publish/live/${STREAM_KEY}
       MEDIAMTX_API_URL: http://mediamtx:9997
       DATABASE_PATH: /data/irlkit.sqlite
     expose:

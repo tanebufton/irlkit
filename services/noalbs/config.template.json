@@ -25,7 +25,7 @@
       {
         "streamServer": {
           "type": "SrtLiveServer",
-          "statsUrl": "http://sls:8181/stats",
+          "statsUrl": "http://sls:8181/stats?publisher=publish/live/${STREAM_KEY}",
           "publisher": "publish/live/${STREAM_KEY}",
           "apiKey": null
         },
