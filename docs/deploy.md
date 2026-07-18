@@ -171,9 +171,29 @@ above exists for completeness, not because it was ever exposed.
 
 ## Troubleshooting
 
-- **No preview / OBS offline** — `docker compose logs obs`. Software GL init or a
-  bad scene collection are the usual causes. `docker volume rm irlkit_obs_config`
-  then restart to reset scenes to the seed.
+- **OBS offline / obs-websocket refuses connections, and stays that way** —
+  `docker compose logs obs` shows dbus warnings then just stops (no further
+  output, container stays "Up" but nothing ever binds port 4455). Confirmed
+  cause in practice: OBS's persisted state in the `obs_config` volume got
+  corrupted by an unclean shutdown — most likely an abrupt power-cycle (e.g.
+  resizing the droplet), not a graceful `docker compose down`. The dbus
+  warnings themselves are red herrings; they're present on every boot,
+  successful or not. Fix — reset the volume and let OBS rebuild its scene
+  collection fresh via the API's bootstrap (loses any manual scene/source
+  customization, not the stream key or destination, which live in `.env`/DB):
+  ```
+  docker compose stop obs
+  docker compose rm -f obs   # a *stopped* container still holds its volume —
+                             # `docker volume rm` fails with "volume is in use"
+                             # until the container itself is removed, not just stopped
+  docker volume rm irlkit_obs_config
+  docker compose up -d obs
+  ```
+  Confirm before assuming this is the cause — check that OBS is actually
+  hung, not just slow: `docker compose exec obs cat /proc/1/status | grep State`
+  and `docker stats --no-stream irlkit-obs-1`. Genuinely hung looks like state
+  `S` with 0% CPU sustained for a while; if CPU is active, it's just slow, and
+  resetting the volume won't help.
 - **Feed not showing in IRL scene** — confirm your `streamid` is
   `publish/live/<KEY>` and the key matches `.env`. Check `docker compose logs sls`.
 - **Dropped frames / congestion climbing** — CPU-bound. Move `ENCODER_PRESET` to
