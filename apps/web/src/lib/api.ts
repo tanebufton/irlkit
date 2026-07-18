@@ -69,6 +69,10 @@ export const api = {
       srt: { url: string };
       rtmp: { url: string };
     }>("/studio/connection-info"),
+  auditLog: (limit?: number) =>
+    req<{ entries: { id: number; ts: number; scene: string; actor: string }[] }>(
+      `/studio/audit-log${limit ? `?limit=${limit}` : ""}`,
+    ),
   inputs: () => req<{ inputs: { inputName: string; inputKind: string }[] }>("/studio/inputs"),
   createScene: (name: string) =>
     req("/studio/scene", { method: "POST", body: JSON.stringify({ name }) }),
@@ -78,6 +82,28 @@ export const api = {
     req("/studio/input", {
       method: "POST",
       body: JSON.stringify({ sceneName, inputName, type, settings }),
+    }),
+  sceneItems: (sceneName: string) =>
+    req<{
+      sceneItems: {
+        sceneItemId: number;
+        sceneItemIndex: number;
+        sceneItemEnabled: boolean;
+        sourceName: string;
+        inputKind: string | null;
+        sceneItemTransform: { positionX: number; positionY: number; scaleX: number; scaleY: number; rotation: number };
+      }[];
+    }>(`/studio/scene-items?sceneName=${encodeURIComponent(sceneName)}`),
+  removeSceneItem: (sceneName: string, sceneItemId: number) =>
+    req("/studio/scene-item", { method: "DELETE", body: JSON.stringify({ sceneName, sceneItemId }) }),
+  setSceneItemTransform: (
+    sceneName: string,
+    sceneItemId: number,
+    transform: Partial<{ positionX: number; positionY: number; scaleX: number; scaleY: number; rotation: number }>,
+  ) =>
+    req("/studio/scene-item/transform", {
+      method: "PATCH",
+      body: JSON.stringify({ sceneName, sceneItemId, ...transform }),
     }),
   getDestination: () => req<{ server: string; key: string }>("/studio/destination"),
   setDestination: (server: string, key: string) =>

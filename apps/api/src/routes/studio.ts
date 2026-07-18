@@ -5,7 +5,7 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { obs } from "../obs.js";
 import { requireOwner } from "../auth.js";
-import { getSetting, setSetting } from "../db.js";
+import { getSetting, listSceneChanges, setSetting } from "../db.js";
 
 // Friendly source types → OBS input kinds (Linux / OBS 30).
 const KIND_MAP: Record<string, string> = {
@@ -37,6 +37,13 @@ export async function studioRoutes(app: FastifyInstance) {
       // Server/URL field; any separate "Stream Key" field should stay blank.
       rtmp: { url: `rtmp://${host}:${rtmpPort}/ingest?user=publish&pass=${streamKey}` },
     };
+  });
+
+  // Scene-change history — sourced from OBS's own event stream (see obs.ts),
+  // so it includes NOALBS's automatic switches, not just ones made here.
+  app.get("/studio/audit-log", async (req) => {
+    const q = z.object({ limit: z.coerce.number().int().min(1).max(500).optional() }).safeParse(req.query);
+    return { entries: listSceneChanges(q.success ? q.data.limit : undefined) };
   });
 
   app.post("/studio/scene", async (req, reply) => {
@@ -78,6 +85,41 @@ export async function studioRoutes(app: FastifyInstance) {
       .safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: body.error.message });
     await obs.setInputSettings(body.data.inputName, body.data.settings);
+    return { ok: true };
+  });
+
+  // What's actually placed in a scene (vs. /studio/input, which creates a new
+  // source) — list it, remove one, or reposition/rescale one.
+  app.get("/studio/scene-items", async (req, reply) => {
+    const q = z.object({ sceneName: z.string().min(1) }).safeParse(req.query);
+    if (!q.success) return reply.code(400).send({ error: "sceneName required" });
+    return obs.getSceneItems(q.data.sceneName);
+  });
+
+  app.delete("/studio/scene-item", async (req, reply) => {
+    const body = z
+      .object({ sceneName: z.string().min(1), sceneItemId: z.number().int() })
+      .safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: body.error.message });
+    await obs.removeSceneItem(body.data.sceneName, body.data.sceneItemId);
+    return { ok: true };
+  });
+
+  app.patch("/studio/scene-item/transform", async (req, reply) => {
+    const body = z
+      .object({
+        sceneName: z.string().min(1),
+        sceneItemId: z.number().int(),
+        positionX: z.number().optional(),
+        positionY: z.number().optional(),
+        scaleX: z.number().optional(),
+        scaleY: z.number().optional(),
+        rotation: z.number().optional(),
+      })
+      .safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: body.error.message });
+    const { sceneName, sceneItemId, ...transform } = body.data;
+    await obs.setSceneItemTransform(sceneName, sceneItemId, transform);
     return { ok: true };
   });
 

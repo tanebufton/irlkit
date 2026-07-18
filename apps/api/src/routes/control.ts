@@ -14,6 +14,8 @@ export async function controlRoutes(app: FastifyInstance) {
   app.post("/control/scene", { preHandler: requireScope("scene:switch") }, async (req, reply) => {
     const body = z.object({ name: z.string().min(1) }).safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: "name required" });
+    const p = req.principal!;
+    obs.markPendingActor(p.role === "owner" ? "owner" : `operator:${p.label ?? p.jti}`);
     await obs.setScene(body.data.name);
     return { ok: true, current: body.data.name };
   });

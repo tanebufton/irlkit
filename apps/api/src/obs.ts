@@ -4,7 +4,7 @@
 import OBSWebSocket from "obs-websocket-js";
 import { EventEmitter } from "node:events";
 import { config } from "./config.js";
-import { getSetting } from "./db.js";
+import { getSetting, logSceneChange } from "./db.js";
 
 // Input kinds differ slightly by platform; these are the Linux/OBS 30 values.
 const KIND_MEDIA = "ffmpeg_source";
@@ -16,9 +16,26 @@ class ObsManager extends EventEmitter {
   private obs = new OBSWebSocket();
   private _connected = false;
   private reconnecting = false;
+  // Briefly tags who's *about* to switch a scene via the API, so the
+  // CurrentProgramSceneChanged listener below — the single source of truth
+  // for the audit log, since it catches every switch regardless of source —
+  // can attribute it correctly. Anything not claimed within the window
+  // (NOALBS auto-switching, or OBS itself) logs as "auto".
+  private pendingActor: { actor: string; expiresAt: number } | null = null;
 
   get connected() {
     return this._connected;
+  }
+
+  markPendingActor(actor: string) {
+    this.pendingActor = { actor, expiresAt: Date.now() + 3000 };
+  }
+
+  private consumePendingActor(): string {
+    const pending = this.pendingActor;
+    this.pendingActor = null;
+    if (pending && pending.expiresAt > Date.now()) return pending.actor;
+    return "auto";
   }
 
   async start() {
@@ -26,6 +43,12 @@ class ObsManager extends EventEmitter {
       this._connected = false;
       this.emit("status", { connected: false });
       this.scheduleReconnect();
+    });
+    // Registered once here (not per-reconnect in connect()) since this.obs is
+    // one long-lived instance across reconnects — re-registering per-connect
+    // would stack duplicate listeners and log every change multiple times.
+    this.obs.on("CurrentProgramSceneChanged", (data: { sceneName: string }) => {
+      logSceneChange(data.sceneName, this.consumePendingActor());
     });
     await this.connect();
   }
@@ -205,6 +228,39 @@ class ObsManager extends EventEmitter {
 
   async setInputSettings(inputName: string, inputSettings: object) {
     return this.call("SetInputSettings", { inputName, inputSettings, overlay: true });
+  }
+
+  // ── Scene item management (what's placed in a scene, vs. the input/source
+  // itself, which can be shared across scenes) ───────────────────────────────
+  async getSceneItems(sceneName: string) {
+    return this.call<{
+      sceneItems: {
+        sceneItemId: number;
+        sceneItemIndex: number;
+        sceneItemEnabled: boolean;
+        sourceName: string;
+        inputKind: string | null;
+        sceneItemTransform: {
+          positionX: number;
+          positionY: number;
+          scaleX: number;
+          scaleY: number;
+          rotation: number;
+        };
+      }[];
+    }>("GetSceneItemList", { sceneName });
+  }
+
+  async removeSceneItem(sceneName: string, sceneItemId: number) {
+    return this.call("RemoveSceneItem", { sceneName, sceneItemId });
+  }
+
+  async setSceneItemTransform(
+    sceneName: string,
+    sceneItemId: number,
+    transform: Partial<{ positionX: number; positionY: number; scaleX: number; scaleY: number; rotation: number }>,
+  ) {
+    return this.call("SetSceneItemTransform", { sceneName, sceneItemId, sceneItemTransform: transform });
   }
 
   async setDestination(server: string, key: string) {

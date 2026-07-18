@@ -24,7 +24,48 @@ db.exec(`
     key    TEXT PRIMARY KEY,
     value  TEXT NOT NULL
   );
+
+  -- Scene-change history. Populated from OBS's own CurrentProgramSceneChanged
+  -- event (catches every switch regardless of source — studio, remote panel,
+  -- NOALBS auto-switching, or OBS itself), not from the API's own switch
+  -- route, so nothing is missed just because it didn't go through our POST.
+  CREATE TABLE IF NOT EXISTS scene_changes (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts      INTEGER NOT NULL,
+    scene   TEXT NOT NULL,
+    actor   TEXT NOT NULL              -- "owner" | "operator:<label>" | "auto"
+  );
+  CREATE INDEX IF NOT EXISTS scene_changes_ts ON scene_changes(ts DESC);
 `);
+
+const MAX_SCENE_CHANGE_ROWS = 500;
+
+export function logSceneChange(scene: string, actor: string): void {
+  db.prepare("INSERT INTO scene_changes (ts, scene, actor) VALUES (?, ?, ?)").run(
+    Date.now(),
+    scene,
+    actor,
+  );
+  // Keep the table from growing unbounded on a long-running appliance.
+  db.prepare(
+    `DELETE FROM scene_changes WHERE id NOT IN (
+       SELECT id FROM scene_changes ORDER BY id DESC LIMIT ?
+     )`,
+  ).run(MAX_SCENE_CHANGE_ROWS);
+}
+
+export interface SceneChangeRow {
+  id: number;
+  ts: number;
+  scene: string;
+  actor: string;
+}
+
+export function listSceneChanges(limit = 100): SceneChangeRow[] {
+  return db
+    .prepare("SELECT * FROM scene_changes ORDER BY id DESC LIMIT ?")
+    .all(limit) as SceneChangeRow[];
+}
 
 export function getSetting(key: string): string | undefined {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as

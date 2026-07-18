@@ -6,7 +6,9 @@ import { api } from "../lib/api";
 import { useStatus } from "../lib/useStatus";
 import { HealthStrip } from "../components/HealthStrip";
 import { Button, Card } from "../components/ui";
+import { AuditLog } from "./AuditLog";
 import { ConnectionInfo } from "./ConnectionInfo";
+import { SceneItems } from "./SceneItems";
 import { TokensPanel } from "./TokensPanel";
 
 function Preview({ active }: { active: boolean }) {
@@ -214,6 +216,8 @@ export function Studio({ onLogout }: { onLogout: () => void }) {
         </Button>
       </Card>
 
+      <SceneItems sceneName={srcScene} />
+
       {/* Output config */}
       <Card>
         <h2 className="text-sm font-semibold text-slate-400 mb-3">Stream destination</h2>
@@ -273,6 +277,7 @@ export function Studio({ onLogout }: { onLogout: () => void }) {
       </Card>
 
       <ConnectionInfo />
+      <AuditLog />
       <TokensPanel />
     </div>
   );
