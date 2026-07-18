@@ -9,7 +9,7 @@ streamer; hand a moderator a scoped link to co-pilot the same box.
 |---|---|---|---|
 | `caddy` | caddy:2 | TLS edge, routes web/api/preview | 80, 443 |
 | `mediamtx` | bluenviron/mediamtx | RTMP ingest + WebRTC/HLS preview | 1935/tcp, 8189/udp |
-| `sls` | build `services/ingest/sls` | SRT Live Server (single-link SRT + srtla target) | 4001/udp |
+| `sls` | build `services/ingest/sls` | SRT Live Server (irlserver fork) — 4000 player (internal), 4001 direct-SRT publish, 4002 SRTLA publish (internal) | 4001/udp |
 | `srtla` | build `services/ingest/srtla` | BELABOX bonding receiver → SLS | 5000/udp |
 | `obs` | build `services/obs` | headless OBS: composite + x264 encode → destination | 4455 (internal) |
 | `noalbs` | 715209/noalbs | auto-switch to BRB when the feed drops | — |
@@ -19,9 +19,11 @@ streamer; hand a moderator a scoped link to co-pilot the same box.
 ## Data flow
 
 1. The streamer's encoder publishes over **SRTLA** (bonded), **SRT**, or **RTMP**.
-2. `srtla` de-bonds to `sls`; `sls`/`mediamtx` hold the live feed.
-3. Headless **OBS** pulls the feed as a Media Source (`srt://sls:4001?streamid=play/live/<KEY>`),
-   composites scenes/overlays, and x264-encodes the program to the destination.
+2. `srtla` de-bonds SRTLA traffic onto `sls`'s dedicated SRTLA port (4002);
+   `sls`/`mediamtx` hold the live feed.
+3. Headless **OBS** pulls the feed as a Media Source from `sls`'s player port
+   (`srt://sls:4000?streamid=play/live/<KEY>`), composites scenes/overlays, and
+   x264-encodes the program to the destination.
 4. The **api** drives OBS over obs-websocket v5 and aggregates health from SLS +
    OBS, pushing it to the browser once a second over `/ws`.
 5. **noalbs** independently watches SLS stats and flips OBS to **BRB** on loss.

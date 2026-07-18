@@ -17,8 +17,10 @@ export const config = {
   obs: {
     url: process.env.OBS_WS_URL ?? "ws://obs:4455",
     password: req("OBS_WS_PASSWORD"),
-    // What OBS pulls as its main feed — kept in sync with the SLS ingest URL.
-    ingestSrtUrl: `srt://sls:4001?streamid=play/live/${process.env.STREAM_KEY ?? "feed"}&latency=2000`,
+    // What OBS pulls as its main feed. Port 4000 is SLS's listen_player port —
+    // distinct from 4001 (direct-SRT publish) and 4002 (SRTLA publish); this
+    // fork uses separate ports per role, not one shared listener.
+    ingestSrtUrl: `srt://sls:4000?streamid=play/live/${process.env.STREAM_KEY ?? "feed"}&latency=2000`,
   },
 
   slsStatsUrl: process.env.SLS_STATS_URL ?? "http://sls:8181/stats",

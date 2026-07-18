@@ -43,14 +43,19 @@ services:
       - "9997"                             # control API / metrics (internal)
 
   # ── Ingest: SRT live server (single-link SRT + target for srtla) ────────────
+  # Three distinct ports (this fork's model, not a single shared listener):
+  # 4000 player (OBS pulls, internal-only) · 4001 direct-SRT publish (public)
+  # · 4002 SRTLA publish (internal-only, fed by the srtla container below).
   sls:
     build: ./services/ingest/sls
     restart: unless-stopped
     volumes:
       - ./services/ingest/sls.conf:/etc/sls/sls.conf:ro
     ports:
-      - "${SRT_PORT:-4001}:4001/udp"       # plain SRT ingest (public)
+      - "${SRT_PORT:-4001}:4001/udp"       # direct SRT publish (public)
     expose:
+      - "4000"                             # player port (internal → obs)
+      - "4002"                             # SRTLA publish port (internal → srtla)
       - "8181"                             # SLS JSON stats (internal → api/noalbs)
 
   # ── Ingest: SRTLA receiver — bonds multiple cellular links, feeds SLS ───────
@@ -58,8 +63,11 @@ services:
     build: ./services/ingest/srtla
     restart: unless-stopped
     # ENTRYPOINT is srtla_rec; these are its args: <listen_port> <srt_host> <srt_port>.
-    # Always listens on 5000 inside the container; the port mapping sets the public port.
-    command: ["5000", "sls", "4001"]
+    # Always listens on 5000 inside the container; the port mapping sets the
+    # public port. Forwards to SLS's SRTLA-specific port (4002), NOT the
+    # direct-SRT publisher port (4001) — this fork requires SRTLA traffic to
+    # land on listen_publisher_srtla specifically.
+    command: ["5000", "sls", "4002"]
     ports:
       - "${SRTLA_PORT:-5000}:5000/udp"     # SRTLA bonded ingest (public)
     depends_on: [sls]

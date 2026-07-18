@@ -16,8 +16,10 @@ case "${ENCODER_PRESET:-balanced}" in
 esac
 # keyframe interval in frames = 2s
 export KEYINT=$(( ${OUTPUT_FPS:-60} * 2 ))
-# Ingest URL OBS pulls as its main media source (de-bonded SRT out of SLS).
-export INGEST_SRT_URL="srt://sls:4001?streamid=play/live/${STREAM_KEY}&latency=2000"
+# Ingest URL OBS pulls as its main media source. Port 4000 is SLS's
+# listen_player port — distinct from 4001 (direct-SRT publish) and 4002
+# (SRTLA publish); this fork uses separate ports per role.
+export INGEST_SRT_URL="srt://sls:4000?streamid=play/live/${STREAM_KEY}&latency=2000"
 
 render() { envsubst < "$TPL/$1" > "$2"; }
 
