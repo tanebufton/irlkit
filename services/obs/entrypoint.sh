@@ -36,15 +36,6 @@ if [ ! -f "$SCENES_DIR/irlkit.json" ]; then
   render scenes.json         "$SCENES_DIR/irlkit.json"
 fi
 
-# ── D-Bus session ─────────────────────────────────────────────────────────
-# pulseaudio and OBS (Qt) both try to reach a session bus, and their fallback
-# when one isn't already running is to spawn `dbus-launch` themselves — which
-# was hanging OBS indefinitely rather than continuing without one (observed
-# directly: PID 1 sitting idle in state S for 5+ minutes after "Could not
-# create dbus connection"). Provisioning a real session bus up front means
-# neither ever needs that fallback path at all.
-eval "$(dbus-launch --sh-syntax)"
-
 # ── Virtual display ──────────────────────────────────────────────────────────
 # This container always owns $DISPLAY exclusively — nothing else in it ever
 # runs an X server — so a leftover lock file only ever means a previous
