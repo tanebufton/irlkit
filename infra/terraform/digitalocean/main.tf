@@ -25,7 +25,7 @@ resource "digitalocean_droplet" "irlkit" {
   image    = "ubuntu-24-04-x64"
   ssh_keys = [digitalocean_ssh_key.admin.fingerprint]
 
-  user_data = templatefile("${path.module}/../user_data.sh.tftpl", {
+  user_data = templatefile("${path.module}/../../cloud-init/bootstrap.sh.tmpl", {
     repo_url       = var.repo_url
     domain         = var.domain
     acme_email     = var.acme_email

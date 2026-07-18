@@ -51,7 +51,7 @@ resource "hcloud_server" "irlkit" {
   ssh_keys     = [hcloud_ssh_key.admin.id]
   firewall_ids = [hcloud_firewall.irlkit.id]
 
-  user_data = templatefile("${path.module}/../user_data.sh.tftpl", {
+  user_data = templatefile("${path.module}/../../cloud-init/bootstrap.sh.tmpl", {
     repo_url       = var.repo_url
     domain         = var.domain
     acme_email     = var.acme_email

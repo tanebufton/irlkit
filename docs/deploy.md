@@ -1,6 +1,6 @@
 # Deploying irlkit
 
-Three paths, easiest first. All target Ubuntu 24.04 with a **dedicated-vCPU**
+Four paths, easiest first. All target Ubuntu 24.04 with a **dedicated-vCPU**
 box — shared/burstable CPU (the "$5 VPS" tier from most providers) will drop
 frames the moment x264 has to sustain 1080p60, because those plans oversell
 the same physical cores across many tenants.
@@ -32,9 +32,30 @@ decode and OBS's compositing share the box with the encoder, so a spike (a scene
 with more sources, a bitrate bump) can start dropping frames. 4 vCPU is the
 tier to actually run on if the box is your main setup.
 
-## 1. Terraform (provision + configure in one step)
+## 1. DigitalOcean one-command deploy (easiest — no Terraform)
 
-Creates the server, firewall, and runs the installer via cloud-init.
+Uses `doctl`, DigitalOcean's own CLI — no HCL, no state file to manage.
+
+```bash
+# Install doctl once: https://docs.digitalocean.com/reference/doctl/how-to/install/
+doctl auth init            # paste a DO API token (https://cloud.digitalocean.com/account/api/tokens)
+./deploy-do.sh              # prompts for domain/email/owner creds, does the rest
+```
+
+It reuses (or uploads) an SSH key already on your DO account, opens exactly the
+ports irlkit needs via a DO Cloud Firewall, creates the droplet (`c-4` — 4
+dedicated vCPU/8GB, ~$84/mo — by default; `IRLKIT_SIZE=c-2 ./deploy-do.sh` for
+the $42/mo budget tier), and hands it a cloud-init script that installs Docker
+and brings the whole stack up unattended. Takes a few minutes end to end; the
+script prints the IP, a command to watch the build, and the owner login.
+
+Point a DNS **A record** at the printed IP (or skip it and use the IP directly
+over a self-signed cert). Tear down with `doctl compute droplet delete irlkit`.
+
+## 2. Terraform (repeatable infra-as-code, any of the supported providers)
+
+Creates the server, firewall, and runs the installer via cloud-init — same
+outcome as `deploy-do.sh`, but declarative and reviewable if you want that.
 
 ```bash
 cd infra/terraform/digitalocean    # cheapest today — or infra/terraform/hetzner
@@ -46,16 +67,17 @@ terraform apply
 Then create a DNS **A record** for your `domain` pointing at the `ipv4` output and
 wait ~5 minutes for images to build and TLS to issue. Visit `https://<domain>`.
 
-## 2. One-line installer (existing server)
+## 3. One-line installer (any existing server, any provider)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/YOU/irlkit/main/install.sh | sudo bash
 ```
 
 Answer the prompts (domain, email, owner password). Re-running is safe — it
-preserves your `.env` and secrets.
+preserves your `.env` and secrets. Use this if you already have a box (DO,
+Hetzner, bare metal, whatever) and just want the stack on it.
 
-## 3. Manual (for hacking on it)
+## 4. Manual (for hacking on it)
 
 ```bash
 git clone https://github.com/YOU/irlkit && cd irlkit
@@ -78,8 +100,9 @@ API on :3000. You still need a reachable OBS + SLS for full function.
 | 5000 | udp | SRTLA bonded ingest |
 | 8189 | udp | WebRTC preview |
 
-Terraform sets these automatically; the installer only prints a reminder (it
-doesn't touch your firewall rules).
+`deploy-do.sh` and Terraform set these automatically (Cloud Firewall / hcloud
+Firewall); the plain installer only prints a reminder since it doesn't touch
+your provider's firewall or `ufw` for you.
 
 ## Operating it
 

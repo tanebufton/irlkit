@@ -18,20 +18,31 @@ Spin up a dedicated-vCPU cloud server, run one command, and you get:
 
 ## Quick start
 
-On a fresh Ubuntu 22.04+ / Debian 12 VPS with a **dedicated vCPU** (not the
-oversold "$5/mo" shared-vCPU tier — see [`docs/deploy.md`](docs/deploy.md#sizing--cost-checked-july-2026--reprice-before-committing-this-moves)
-for current pricing; as of July 2026 a DigitalOcean 4 vCPU/8GB CPU-Optimized
-droplet at $84/mo is the cheapest confirmed box that runs 1080p60 comfortably,
-with a thinner-margin $42/mo 2 vCPU floor below it):
+You need a **dedicated-vCPU** box (not the oversold "$5/mo" shared-vCPU tier —
+see [`docs/deploy.md`](docs/deploy.md#sizing--cost-checked-july-2026--reprice-before-committing-this-moves)
+for current pricing across providers). As of July 2026 a DigitalOcean 4
+vCPU/8GB CPU-Optimized droplet at $84/mo is the cheapest confirmed box that
+runs 1080p60 comfortably, with a thinner-margin $42/mo 2 vCPU floor below it.
+
+**Deploying to DigitalOcean?** Skip straight to a running box with:
+
+```bash
+doctl auth init      # once, with a DO API token
+./deploy-do.sh        # creates the droplet, firewall, and installs everything
+```
+
+**Any other provider / already have a server?** SSH in and run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/YOU/irlkit/main/install.sh | sudo bash
 ```
 
-The installer sets up Docker, generates secrets, and launches the stack. Point a
-DNS record at the box first for automatic HTTPS (or use the bare IP for a
-self-signed local test). Open ports: `80,443/tcp`, `1935/tcp`, `4001/udp`,
-`5000/udp`, `8189/udp`.
+Both install Docker, generate secrets, and launch the stack — `deploy-do.sh`
+also provisions the box and firewall for you; the plain installer expects you
+to point DNS at the box yourself and open `80,443/tcp`, `1935/tcp`, `4001/udp`,
+`5000/udp`, `8189/udp` (or use the bare IP for a self-signed local test).
+Prefer infra-as-code, or another cloud entirely? See
+[`docs/deploy.md`](docs/deploy.md) for Terraform (DigitalOcean + Hetzner).
 
 Then open `https://<your-domain>`, log in as the owner, set your stream
 destination in the studio, and point your encoder at:
@@ -61,7 +72,9 @@ the full plan in the repo history.
 | Path | What |
 |---|---|
 | `docker-compose.yml` | the whole stack |
-| `install.sh` | one-command installer |
+| `install.sh` | one-command installer (any provider/server) |
+| `deploy-do.sh` | one-command provision + install on DigitalOcean via `doctl` |
+| `infra/` | Terraform (DigitalOcean + Hetzner) and the shared cloud-init bootstrap |
 | `Caddyfile` | TLS edge + routing |
 | `services/ingest/` | MediaMTX (RTMP), SLS (SRT), srtla (bonding) |
 | `services/obs/` | headless OBS image + preloaded scenes |

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Cloud-init user-data: provision irlkit unattended on first boot. Secrets are
-# generated on the box (never passed through Terraform state); only the domain,
-# email, and owner credentials come from Terraform vars.
+# generated on the box (never passed through Terraform state or shell history);
+# only the domain, email, and owner credentials come in as ${...} placeholders,
+# filled in by whichever deploy path renders this file (Terraform's
+# templatefile(), or deploy-do.sh's envsubst for the plain-doctl path).
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
