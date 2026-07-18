@@ -95,8 +95,10 @@ services:
     depends_on: [sls, mediamtx]
 
   # ── Auto scene switching: BRB when the incoming feed drops ──────────────────
+  # Built from source (services/noalbs/Dockerfile) — no verified prebuilt
+  # image exists for this project.
   noalbs:
-    image: 715209/noalbs:latest
+    build: ./services/noalbs
     restart: unless-stopped
     volumes:
       - ./services/noalbs/config.json:/app/config.json:ro

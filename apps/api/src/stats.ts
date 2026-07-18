@@ -25,48 +25,27 @@ export interface StatusSnapshot {
 let lastOutputBytes = 0;
 let lastOutputTs = 0;
 
-// SLS's /stats shape varies across builds; dig out the first publisher's
-// bitrate/rtt wherever they live rather than assuming an exact schema.
+// SLS's /stats shape, confirmed from the irlserver/irl-srt-server source (the
+// NOALBS stream-server integration for this same endpoint parses the exact
+// same fields): { publishers: { "<streamid>": { bitrate, rtt, ... } } },
+// bitrate already in kbps, rtt already in ms — no unit conversion needed.
 async function readIngest(): Promise<{ online: boolean; bitrateKbps: number | null; rttMs: number | null }> {
   try {
     const res = await fetch(config.slsStatsUrl, { signal: AbortSignal.timeout(1500) });
     if (!res.ok) return { online: false, bitrateKbps: null, rttMs: null };
-    const data = (await res.json()) as Record<string, unknown>;
+    const data = (await res.json()) as { publishers?: Record<string, { bitrate?: number; rtt?: number }> };
 
-    const pub = findPublisher(data);
+    // Single-tenant appliance: at most one active publisher at a time, so the
+    // first entry (regardless of its exact streamid) is the one we want.
+    const pub = data.publishers ? Object.values(data.publishers)[0] : undefined;
     if (!pub) return { online: false, bitrateKbps: null, rttMs: null };
 
-    const bitrate = num(pub, ["bitrate", "mbpsRecvRate", "rBandwidth"]);
-    const rtt = num(pub, ["rtt", "msRTT", "rttMs"]);
-    // SLS may report Mbps; normalise anything < 100 as Mbps → Kbps.
-    const kbps = bitrate == null ? null : bitrate < 100 ? Math.round(bitrate * 1000) : Math.round(bitrate);
-    return { online: true, bitrateKbps: kbps, rttMs: rtt == null ? null : Math.round(rtt) };
+    const bitrateKbps = typeof pub.bitrate === "number" ? Math.round(pub.bitrate) : null;
+    const rttMs = typeof pub.rtt === "number" ? Math.round(pub.rtt) : null;
+    return { online: true, bitrateKbps, rttMs };
   } catch {
     return { online: false, bitrateKbps: null, rttMs: null };
   }
-}
-
-function findPublisher(data: Record<string, unknown>): Record<string, unknown> | null {
-  // Common shapes: { publishers: { "<sid>": {...} } } or { streams: [...] }.
-  const pubs = data.publishers as Record<string, unknown> | undefined;
-  if (pubs && typeof pubs === "object") {
-    const first = Object.values(pubs)[0];
-    if (first && typeof first === "object") return first as Record<string, unknown>;
-  }
-  const streams = data.streams as unknown[] | undefined;
-  if (Array.isArray(streams) && streams[0] && typeof streams[0] === "object") {
-    return streams[0] as Record<string, unknown>;
-  }
-  return null;
-}
-
-function num(obj: Record<string, unknown>, keys: string[]): number | null {
-  for (const k of keys) {
-    const v = obj[k];
-    if (typeof v === "number" && Number.isFinite(v)) return v;
-    if (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))) return Number(v);
-  }
-  return null;
 }
 
 async function collect(): Promise<StatusSnapshot> {

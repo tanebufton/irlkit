@@ -12,7 +12,7 @@ streamer; hand a moderator a scoped link to co-pilot the same box.
 | `sls` | build `services/ingest/sls` | SRT Live Server (irlserver fork) — 4000 player (internal), 4001 direct-SRT publish, 4002 SRTLA publish (internal) | 4001/udp |
 | `srtla` | build `services/ingest/srtla` | BELABOX bonding receiver → SLS | 5000/udp |
 | `obs` | build `services/obs` | headless OBS: composite + x264 encode → destination | 4455 (internal) |
-| `noalbs` | 715209/noalbs | auto-switch to BRB when the feed drops | — |
+| `noalbs` | build `services/noalbs` | auto-switch to BRB when the feed drops | — |
 | `api` | build `apps/api` | control plane: obs-websocket, auth, stats, tokens | 3000 (internal) |
 | `web` | build `apps/web` | SPA: studio + remote control panel | 80 (internal) |
 

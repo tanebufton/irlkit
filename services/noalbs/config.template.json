@@ -1,7 +1,8 @@
 {
   "user": {
     "id": null,
-    "name": "irlkit"
+    "name": "irlkit",
+    "passwordHash": null
   },
   "switcher": {
     "bitrateSwitcherEnabled": true,
@@ -12,7 +13,8 @@
     "triggers": {
       "low": 800,
       "rtt": 2500,
-      "offline": null
+      "offline": null,
+      "rttOffline": null
     },
     "switchingScenes": {
       "normal": "IRL",
@@ -24,7 +26,8 @@
         "streamServer": {
           "type": "SrtLiveServer",
           "statsUrl": "http://sls:8181/stats",
-          "publisher": "publish/live/${STREAM_KEY}"
+          "publisher": "publish/live/${STREAM_KEY}",
+          "apiKey": null
         },
         "name": "SLS",
         "priority": 0,
@@ -38,12 +41,24 @@
     "type": "Obs",
     "host": "obs",
     "password": "${OBS_WS_PASSWORD}",
-    "port": 4455
+    "port": 4455,
+    "collections": null
   },
+  "chat": null,
   "optionalScenes": {
     "starting": "Starting Soon",
     "ending": null,
     "privacy": null,
     "refresh": null
-  }
+  },
+  "optionalOptions": {
+    "twitchTranscodingCheck": false,
+    "twitchTranscodingRetries": 5,
+    "twitchTranscodingDelaySeconds": 15,
+    "offlineTimeout": null,
+    "recordWhileStreaming": false,
+    "switchToStartingSceneOnStreamStart": false,
+    "switchFromStartingSceneToLiveScene": false
+  },
+  "logToFile": false
 }
