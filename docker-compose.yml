@@ -120,6 +120,10 @@ services:
       OWNER_PASSWORD: ${OWNER_PASSWORD}
       OBS_WS_URL: ws://obs:4455
       OBS_WS_PASSWORD: ${OBS_WS_PASSWORD}
+      # Needed to build the correct ingest URL when bootstrapping the "IRL
+      # Feed" media source (config.ts's ingestSrtUrl) — without this, it
+      # silently falls back to the literal streamid "play/live/feed".
+      STREAM_KEY: ${STREAM_KEY}
       SLS_STATS_URL: http://sls:8181/stats
       MEDIAMTX_API_URL: http://mediamtx:9997
       DATABASE_PATH: /data/irlkit.sqlite
