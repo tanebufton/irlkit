@@ -36,7 +36,23 @@ if [ ! -f "$SCENES_DIR/irlkit.json" ]; then
   render scenes.json         "$SCENES_DIR/irlkit.json"
 fi
 
+# ── D-Bus session ─────────────────────────────────────────────────────────
+# pulseaudio and OBS (Qt) both try to reach a session bus, and their fallback
+# when one isn't already running is to spawn `dbus-launch` themselves — which
+# was hanging OBS indefinitely rather than continuing without one (observed
+# directly: PID 1 sitting idle in state S for 5+ minutes after "Could not
+# create dbus connection"). Provisioning a real session bus up front means
+# neither ever needs that fallback path at all.
+eval "$(dbus-launch --sh-syntax)"
+
 # ── Virtual display ──────────────────────────────────────────────────────────
+# This container always owns $DISPLAY exclusively — nothing else in it ever
+# runs an X server — so a leftover lock file only ever means a previous
+# instance ended uncleanly (crash, abrupt container kill, host power-cycle),
+# never a real conflicting server. Clear it unconditionally rather than let
+# Xvfb refuse to bind and crash-loop forever on every subsequent restart
+# (observed directly: "Server is already active for display 99").
+rm -f "/tmp/.X${DISPLAY#:}-lock"
 Xvfb "$DISPLAY" -screen 0 "${OUTPUT_WIDTH:-1920}x${OUTPUT_HEIGHT:-1080}x24" -nolisten tcp &
 for i in $(seq 1 30); do xdpyinfo -display "$DISPLAY" >/dev/null 2>&1 && break; sleep 0.2; done
 

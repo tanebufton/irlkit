@@ -2,6 +2,7 @@
 // This is the API behind the browser scene editor.
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { config } from "../config.js";
 import { obs } from "../obs.js";
 import { requireOwner } from "../auth.js";
 import { getSetting, setSetting } from "../db.js";
@@ -17,6 +18,26 @@ const KIND_MAP: Record<string, string> = {
 
 export async function studioRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireOwner);
+
+  // Ingest endpoints + stream key for the owner's encoder. Host is derived
+  // from the request itself (whatever domain/IP is actually reaching this
+  // box right now) rather than a configured value, so it's never stale.
+  app.get("/studio/connection-info", async (req) => {
+    const host = req.hostname;
+    const { streamKey, srtlaPort, srtPort, rtmpPort } = config.ingest;
+    return {
+      streamKey,
+      srtla: { url: `udp://${host}:${srtlaPort}` },
+      srt: {
+        url: `srt://${host}:${srtPort}?streamid=publish/live/${streamKey}&latency=2000`,
+      },
+      // MediaMTX authenticates RTMP publishers via user/pass query params
+      // (confirmed against its own docs) — not a path-appended "stream key"
+      // like Twitch/YouTube. One full URL to paste into the app's
+      // Server/URL field; any separate "Stream Key" field should stay blank.
+      rtmp: { url: `rtmp://${host}:${rtmpPort}/ingest?user=publish&pass=${streamKey}` },
+    };
+  });
 
   app.post("/studio/scene", async (req, reply) => {
     const body = z.object({ name: z.string().min(1) }).safeParse(req.body);

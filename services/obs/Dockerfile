@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       pulseaudio pulseaudio-utils \
       libgl1-mesa-dri mesa-utils \
       fonts-dejavu-core \
+      dbus-x11 \
  && add-apt-repository -y ppa:obsproject/obs-studio \
  && apt-get update && apt-get install -y --no-install-recommends \
       obs-studio \

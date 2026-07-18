@@ -62,6 +62,13 @@ export const api = {
     req("/control/audio/mute", { method: "POST", body: JSON.stringify({ name, muted }) }),
 
   // studio (owner)
+  connectionInfo: () =>
+    req<{
+      streamKey: string;
+      srtla: { url: string };
+      srt: { url: string };
+      rtmp: { url: string };
+    }>("/studio/connection-info"),
   inputs: () => req<{ inputs: { inputName: string; inputKind: string }[] }>("/studio/inputs"),
   createScene: (name: string) =>
     req("/studio/scene", { method: "POST", body: JSON.stringify({ name }) }),

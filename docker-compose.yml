@@ -132,6 +132,11 @@ services:
       SLS_STATS_URL: http://sls:8181/stats?publisher=publish/live/${STREAM_KEY}
       MEDIAMTX_API_URL: http://mediamtx:9997
       DATABASE_PATH: /data/irlkit.sqlite
+      # For the studio's connection-info panel (public ingest ports the
+      # owner points their encoder at — not secret, unlike STREAM_KEY).
+      SRTLA_PORT: ${SRTLA_PORT:-5000}
+      SRT_PORT: ${SRT_PORT:-4001}
+      RTMP_PORT: ${RTMP_PORT:-1935}
     expose:
       - "${API_PORT:-3000}"
     depends_on: [obs]

@@ -26,6 +26,16 @@ export const config = {
   slsStatsUrl: process.env.SLS_STATS_URL ?? "http://sls:8181/stats",
   mediamtxApiUrl: process.env.MEDIAMTX_API_URL ?? "http://mediamtx:9997",
 
+  // Public-facing ingest info, for the studio's connection-info panel — the
+  // owner needs these to point their encoder at the box; not otherwise
+  // security-sensitive beyond the stream key itself.
+  ingest: {
+    streamKey: process.env.STREAM_KEY ?? "feed",
+    srtlaPort: process.env.SRTLA_PORT ?? "5000",
+    srtPort: process.env.SRT_PORT ?? "4001",
+    rtmpPort: process.env.RTMP_PORT ?? "1935",
+  },
+
   databasePath: process.env.DATABASE_PATH ?? "/data/irlkit.sqlite",
 
   // Canonical scene names irlkit manages.

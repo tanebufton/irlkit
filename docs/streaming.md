@@ -18,10 +18,17 @@ srt://<HOST>:4001?streamid=publish/live/<KEY>&latency=2000
 ```
 
 ### RTMP — apps / desktop OBS
+MediaMTX (irlkit's RTMP ingest) authenticates publishers via `user`/`pass`
+query params, not a separate "stream key" appended to the path — paste this
+whole thing into your app's Server/URL field and leave any separate "Stream
+Key" field blank:
 ```
-URL: rtmp://<HOST>:1935/ingest
-Key: <KEY>
+rtmp://<HOST>:1935/ingest?user=publish&pass=<KEY>
 ```
+Some apps' RTMP client may not preserve query params cleanly through a
+"Server + Key" field split — if RTMP publish fails for a specific app, prefer
+SRT/SRTLA above, which is the primary, better-tested path for IRL streaming
+anyway.
 
 > The higher the SRT latency, the more cellular jitter it absorbs (at the cost of
 > delay). 2000 ms is a good IRL default; drop it for a stable wired uplink.

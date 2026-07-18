@@ -6,6 +6,7 @@ import { api } from "../lib/api";
 import { useStatus } from "../lib/useStatus";
 import { HealthStrip } from "../components/HealthStrip";
 import { Button, Card } from "../components/ui";
+import { ConnectionInfo } from "./ConnectionInfo";
 import { TokensPanel } from "./TokensPanel";
 
 function Preview({ active }: { active: boolean }) {
@@ -271,6 +272,7 @@ export function Studio({ onLogout }: { onLogout: () => void }) {
         </Button>
       </Card>
 
+      <ConnectionInfo />
       <TokensPanel />
     </div>
   );

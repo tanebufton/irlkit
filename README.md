@@ -54,7 +54,7 @@ destination in the studio, and point your encoder at:
 |---|---|---|
 | SRTLA  | `udp://<host>:5000` | bonded cellular (BELABOX / IRL Pro) |
 | SRT    | `srt://<host>:4001?streamid=publish/live/<KEY>&latency=2000` | single link |
-| RTMP   | `rtmp://<host>:1935/ingest?key=<KEY>` | app / OBS |
+| RTMP   | `rtmp://<host>:1935/ingest?user=publish&pass=<KEY>` | app / OBS — see `docs/streaming.md` |
 
 ## Architecture
 
