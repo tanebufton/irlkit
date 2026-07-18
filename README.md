@@ -37,7 +37,7 @@ manually. See [`docs/deploy.md`](docs/deploy.md) for details.
 **Any other provider / already have a server?** SSH in and run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOU/irlkit/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/tanebufton/irlkit/main/install.sh | sudo bash
 ```
 
 Both install Docker, generate secrets, and launch the stack — `deploy-do.sh`

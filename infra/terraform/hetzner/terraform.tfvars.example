@@ -10,5 +10,5 @@ owner_password = "pick-a-strong-password"
 server_type = "ccx23"
 location    = "fsn1"
 
-# Point this at your fork once pushed.
-repo_url = "https://github.com/YOU/irlkit.git"
+# Already points at the pushed repo. Override only if deploying from your own fork.
+repo_url = "https://github.com/tanebufton/irlkit.git"

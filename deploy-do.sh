@@ -18,12 +18,19 @@ command -v doctl >/dev/null 2>&1 || die "doctl not found. Install: https://docs.
 command -v envsubst >/dev/null 2>&1 || die "envsubst not found (part of gettext). Install it and re-run."
 doctl account get >/dev/null 2>&1 || die "doctl isn't authenticated. Run: doctl auth init"
 
-REPO_URL="${IRLKIT_REPO:-https://github.com/YOU/irlkit.git}"
+REPO_URL="${IRLKIT_REPO:-https://github.com/tanebufton/irlkit.git}"
 NAME="${IRLKIT_NAME:-irlkit}"
 # c-2 = 2 vCPU/4GB (~$42/mo, budget floor). c-4 = 4 vCPU/8GB (~$84/mo, recommended
 # for reliable 1080p60). See docs/deploy.md for current pricing across providers.
 SIZE="${IRLKIT_SIZE:-c-4}"
 IMAGE="ubuntu-24-04-x64"
+
+# Fail fast, before creating anything billable, rather than have cloud-init
+# discover a bad/placeholder URL a couple minutes into a droplet's life — that
+# surfaces as a cryptic "could not read Username" buried in its own log.
+command -v git >/dev/null 2>&1 || die "git not found locally — needed to verify the repo URL."
+log "Checking repo URL is reachable: $REPO_URL"
+git ls-remote "$REPO_URL" >/dev/null 2>&1 || die "Can't reach '$REPO_URL' as a git remote (wrong URL, a typo, or a private repo needing auth cloud-init can't provide). Set IRLKIT_REPO to your fork's URL, e.g.: IRLKIT_REPO=https://github.com/<you>/irlkit.git ./deploy-do.sh"
 
 log "Sizing: $SIZE. Override with IRLKIT_SIZE (see docs/deploy.md for tiers)."
 

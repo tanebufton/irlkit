@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # irlkit installer — turns a fresh Ubuntu/Debian VPS into an IRL streaming rig.
 #
-#   curl -fsSL https://raw.githubusercontent.com/YOU/irlkit/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/tanebufton/irlkit/main/install.sh | bash
 #
 # Idempotent: safe to re-run. Installs Docker, generates .env with strong random
 # secrets (preserving any existing ones), and brings the stack up.
 set -euo pipefail
 
-REPO_URL="${IRLKIT_REPO:-https://github.com/YOU/irlkit.git}"
+REPO_URL="${IRLKIT_REPO:-https://github.com/tanebufton/irlkit.git}"
 INSTALL_DIR="${IRLKIT_DIR:-/opt/irlkit}"
 
 log()  { printf '\033[1;36m[irlkit]\033[0m %s\n' "$*"; }
@@ -30,6 +30,12 @@ if [ -d "$INSTALL_DIR/.git" ]; then
 elif [ -f "$INSTALL_DIR/docker-compose.yml" ]; then
   log "Using existing files in $INSTALL_DIR (no git)."
 else
+  command -v git >/dev/null 2>&1 || { log "Installing git…"; apt-get update -qq && apt-get install -y -qq git; }
+  # Fail fast with a clear message rather than cloning into a half-provisioned
+  # box: a wrong/placeholder REPO_URL otherwise surfaces minutes later as a
+  # cryptic "could not read Username" buried in cloud-init's own log.
+  log "Checking repo URL is reachable: $REPO_URL"
+  git ls-remote "$REPO_URL" >/dev/null 2>&1 || die "Can't reach '$REPO_URL' as a git remote (wrong URL, or a private repo needing auth this non-interactive script can't provide). Set IRLKIT_REPO to your fork's URL, e.g.: IRLKIT_REPO=https://github.com/<you>/irlkit.git bash install.sh"
   log "Cloning irlkit into $INSTALL_DIR…"
   git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
 fi

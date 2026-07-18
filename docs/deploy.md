@@ -84,7 +84,7 @@ wait ~5 minutes for images to build and TLS to issue. Visit `https://<domain>`.
 ## 3. One-line installer (any existing server, any provider)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOU/irlkit/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/tanebufton/irlkit/main/install.sh | sudo bash
 ```
 
 Answer the prompts (domain, email, owner password). Re-running is safe — it
@@ -94,7 +94,7 @@ Hetzner, bare metal, whatever) and just want the stack on it.
 ## 4. Manual (for hacking on it)
 
 ```bash
-git clone https://github.com/YOU/irlkit && cd irlkit
+git clone https://github.com/tanebufton/irlkit && cd irlkit
 cp .env.example .env         # edit secrets + domain
 envsubst < services/noalbs/config.template.json > services/noalbs/config.json
 docker compose up -d --build

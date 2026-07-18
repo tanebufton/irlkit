@@ -28,7 +28,7 @@ variable "region" {
 
 variable "repo_url" {
   type    = string
-  default = "https://github.com/YOU/irlkit.git"
+  default = "https://github.com/tanebufton/irlkit.git"
 }
 
 variable "domain" {
