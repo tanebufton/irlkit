@@ -18,7 +18,11 @@ Spin up a dedicated-vCPU cloud server, run one command, and you get:
 
 ## Quick start
 
-On a fresh Ubuntu 22.04+ / Debian 12 VPS (4–8 dedicated vCPU recommended):
+On a fresh Ubuntu 22.04+ / Debian 12 VPS with a **dedicated vCPU** (not the
+oversold "$5/mo" shared-vCPU tier — see [`docs/deploy.md`](docs/deploy.md#sizing--cost-checked-july-2026--reprice-before-committing-this-moves)
+for current pricing; as of July 2026 a DigitalOcean 4 vCPU/8GB CPU-Optimized
+droplet at $84/mo is the cheapest confirmed box that runs 1080p60 comfortably,
+with a thinner-margin $42/mo 2 vCPU floor below it):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/YOU/irlkit/main/install.sh | sudo bash

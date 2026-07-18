@@ -15,7 +15,7 @@ variable "server_name" {
 }
 
 variable "server_type" {
-  description = "Dedicated-vCPU CCX type. ccx23 = 4 vCPU (1080p60 minimum), ccx33 = 8 vCPU (comfortable)."
+  description = "Dedicated-vCPU CCX type. ccx13 = 2 vCPU/8GB (budget floor, low-cpu preset only), ccx23 = 4 vCPU/16GB (recommended for 1080p60), ccx33 = 8 vCPU (comfortable). Hetzner raised CCX pricing ~170% in June 2026 — DigitalOcean's equivalent c-2/c-4 droplets are now cheaper; see docs/deploy.md."
   type        = string
   default     = "ccx23"
 }

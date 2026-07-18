@@ -15,7 +15,7 @@ variable "server_name" {
 }
 
 variable "droplet_size" {
-  description = "CPU-Optimized (dedicated) size. c-4 = 4 vCPU (1080p60 minimum), c-8 = 8 vCPU (comfortable)."
+  description = "CPU-Optimized (dedicated) size. c-2 = 2 vCPU/4GB (~$42/mo, budget floor, low-cpu preset only), c-4 = 4 vCPU/8GB (~$84/mo, recommended for 1080p60), c-8 = 8 vCPU (comfortable). See docs/deploy.md for current pricing."
   type        = string
   default     = "c-4"
 }

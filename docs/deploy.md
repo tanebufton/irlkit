@@ -1,14 +1,43 @@
 # Deploying irlkit
 
-Three paths, easiest first. All target Ubuntu 24.04 with **4–8 dedicated vCPU**
-(shared/burstable CPU will drop frames at 1080p60).
+Three paths, easiest first. All target Ubuntu 24.04 with a **dedicated-vCPU**
+box — shared/burstable CPU (the "$5 VPS" tier from most providers) will drop
+frames the moment x264 has to sustain 1080p60, because those plans oversell
+the same physical cores across many tenants.
+
+## Sizing & cost (checked July 2026 — reprice before committing, this moves)
+
+| Tier | Preset | Spec | Cheapest confirmed | Price/mo |
+|---|---|---|---|---|
+| **Budget** | `low-cpu` (x264 superfast) | 2 dedicated vCPU / 4GB | **DigitalOcean** `c-2` | **$42** |
+| Budget (alt) | `low-cpu` | 2 dedicated vCPU / 8GB | Hetzner `CCX13` | ~€43 (~$47) |
+| **Recommended** | `balanced` (x264 veryfast) | 4 dedicated vCPU / 8GB | **DigitalOcean** `c-4` | **$84** |
+| Recommended (alt) | `balanced` | 4 dedicated vCPU / 16GB | Hetzner `CCX23` | ~€86 (~$94) |
+| Not recommended | — | Vultr CPU-Optimized 4 vCPU | Vultr | ~$110+ |
+
+DigitalOcean is the current cheapest genuinely-dedicated option at both tiers —
+Hetzner raised CCX pricing ~170% in June 2026 and is no longer the budget pick
+it used to be, though it still ships more RAM per dollar if that matters more
+to you than the lowest sticker price. Vultr's dedicated ("CPU-Optimized") line
+prices per-vCPU higher than both.
+
+**Skip Contabo, OVH's cheap "VPS" line, and any other "$5/mo, 4 vCPU" deal.**
+Those vCPUs are oversold shared cores (documented CPU steal of 15–50%+ under
+load) — fine for a hobby web app, not for a continuous video encode. If a price
+looks too good for "dedicated," it's the same trap: check whether the provider
+actually says *dedicated* vCPU, not just vCPU.
+
+2 vCPU is a real floor, not a comfortable one — it has no headroom once SRT/SRTLA
+decode and OBS's compositing share the box with the encoder, so a spike (a scene
+with more sources, a bitrate bump) can start dropping frames. 4 vCPU is the
+tier to actually run on if the box is your main setup.
 
 ## 1. Terraform (provision + configure in one step)
 
 Creates the server, firewall, and runs the installer via cloud-init.
 
 ```bash
-cd infra/terraform/hetzner        # or infra/terraform/digitalocean
+cd infra/terraform/digitalocean    # cheapest today — or infra/terraform/hetzner
 cp terraform.tfvars.example terraform.tfvars   # fill in token, domain, etc.
 terraform init
 terraform apply
