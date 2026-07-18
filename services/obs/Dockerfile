@@ -12,6 +12,15 @@ ENV DISPLAY=:99
 # Force software GL so OBS starts without a real GPU.
 ENV LIBGL_ALWAYS_SOFTWARE=1
 ENV QT_QPA_PLATFORM=xcb
+# Cap llvmpipe's (Mesa's software rasterizer) JIT codegen at AVX — observed a
+# full cross-thread deadlock in OBS's startup (0% CPU, every thread parked in
+# do_poll/futex_wait, confirmed via /proc) specifically on a host exposing
+# AVX-512, which llvmpipe only recently added support for and is one of its
+# least battle-tested codegen paths. AVX2 is deliberately excluded from the
+# cap too, not just AVX-512 — Mesa's own GALLIUM_OVERRIDE_CPU_CAPS only
+# documents values up to "avx", so that's the highest confirmed-safe setting
+# rather than guessing at an undocumented "avx2" value.
+ENV GALLIUM_OVERRIDE_CPU_CAPS=avx
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       software-properties-common gettext-base ca-certificates wget \
