@@ -1,0 +1,29 @@
+# secrets / local config
+.env
+*.local
+
+# node
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# data / runtime state
+data/
+recordings/
+*.sqlite
+*.sqlite-*
+caddy_data/
+caddy_config/
+
+# rendered-at-install config (contains secrets)
+services/noalbs/config.json
+
+# logs
+*.log
+npm-debug.log*
+
+# os
+.DS_Store
+Thumbs.db

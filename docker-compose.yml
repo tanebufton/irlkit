@@ -1,0 +1,134 @@
+# irlkit — self-hosted IRL streaming appliance.
+# One box = one streamer. `docker compose up -d` brings the whole rig online.
+#
+# Traffic map:
+#   phone/encoder ─SRTLA/UDP─▶ srtla ─▶ sls ─┐
+#                 ─SRT/UDP──────────▶ sls ────┼─▶ obs (media source) ─x264─▶ destination
+#                 ─RTMP/TCP─────────▶ mediamtx┘
+#   browser ─HTTPS─▶ caddy ─▶ web (SPA) + api (control) + mediamtx (WebRTC preview)
+
+name: irlkit
+
+services:
+  # ── Edge: TLS termination + single entrypoint for all web surfaces ──────────
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      IRLKIT_DOMAIN: ${IRLKIT_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    depends_on: [web, api]
+
+  # ── Ingest: RTMP + low-latency WebRTC/HLS preview serving ───────────────────
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    restart: unless-stopped
+    volumes:
+      - ./services/ingest/mediamtx.yml:/mediamtx.yml:ro
+    environment:
+      MTX_STREAM_KEY: ${STREAM_KEY}
+    ports:
+      - "${RTMP_PORT:-1935}:1935"          # RTMP ingest (public)
+      - "8189:8189/udp"                    # WebRTC ICE/UDP (preview)
+    expose:
+      - "8888"                             # HLS (internal → caddy)
+      - "8889"                             # WebRTC WHEP/WHIP signaling (internal → caddy)
+      - "9997"                             # control API / metrics (internal)
+
+  # ── Ingest: SRT live server (single-link SRT + target for srtla) ────────────
+  sls:
+    build: ./services/ingest/sls
+    restart: unless-stopped
+    volumes:
+      - ./services/ingest/sls.conf:/etc/sls/sls.conf:ro
+    ports:
+      - "${SRT_PORT:-4001}:4001/udp"       # plain SRT ingest (public)
+    expose:
+      - "8181"                             # SLS JSON stats (internal → api/noalbs)
+
+  # ── Ingest: SRTLA receiver — bonds multiple cellular links, feeds SLS ───────
+  srtla:
+    build: ./services/ingest/srtla
+    restart: unless-stopped
+    # ENTRYPOINT is srtla_rec; these are its args: <listen_port> <srt_host> <srt_port>.
+    # Always listens on 5000 inside the container; the port mapping sets the public port.
+    command: ["5000", "sls", "4001"]
+    ports:
+      - "${SRTLA_PORT:-5000}:5000/udp"     # SRTLA bonded ingest (public)
+    depends_on: [sls]
+
+  # ── Headless OBS: composites the feed, x264 encode, outputs to destination ──
+  obs:
+    build: ./services/obs
+    restart: unless-stopped
+    shm_size: "2gb"
+    volumes:
+      - obs_config:/config
+      - ./services/obs/scenes:/opt/scenes:ro
+    environment:
+      OBS_WS_PASSWORD: ${OBS_WS_PASSWORD}
+      STREAM_KEY: ${STREAM_KEY}
+      OUTPUT_WIDTH: ${OUTPUT_WIDTH:-1920}
+      OUTPUT_HEIGHT: ${OUTPUT_HEIGHT:-1080}
+      OUTPUT_FPS: ${OUTPUT_FPS:-60}
+      OUTPUT_BITRATE_KBPS: ${OUTPUT_BITRATE_KBPS:-6000}
+      ENCODER_PRESET: ${ENCODER_PRESET:-balanced}
+      DEST_RTMP_URL: ${DEST_RTMP_URL}
+      DEST_STREAM_KEY: ${DEST_STREAM_KEY}
+    expose:
+      - "4455"                             # obs-websocket v5 (internal → api/noalbs)
+    depends_on: [sls, mediamtx]
+
+  # ── Auto scene switching: BRB when the incoming feed drops ──────────────────
+  noalbs:
+    image: 715209/noalbs:latest
+    restart: unless-stopped
+    volumes:
+      - ./services/noalbs/config.json:/app/config.json:ro
+    environment:
+      OBS_WS_PASSWORD: ${OBS_WS_PASSWORD}
+    depends_on: [obs, sls]
+
+  # ── Control plane API ───────────────────────────────────────────────────────
+  api:
+    build: ./apps/api
+    restart: unless-stopped
+    volumes:
+      - api_data:/data
+    environment:
+      NODE_ENV: production
+      API_PORT: ${API_PORT:-3000}
+      SESSION_SECRET: ${SESSION_SECRET}
+      OWNER_USERNAME: ${OWNER_USERNAME}
+      OWNER_PASSWORD: ${OWNER_PASSWORD}
+      OBS_WS_URL: ws://obs:4455
+      OBS_WS_PASSWORD: ${OBS_WS_PASSWORD}
+      SLS_STATS_URL: http://sls:8181/stats
+      MEDIAMTX_API_URL: http://mediamtx:9997
+      DATABASE_PATH: /data/irlkit.sqlite
+    expose:
+      - "${API_PORT:-3000}"
+    depends_on: [obs]
+
+  # ── Web SPA (studio editor + remote control panel) ──────────────────────────
+  web:
+    build:
+      context: ./apps/web
+      args:
+        VITE_API_BASE: /api
+    restart: unless-stopped
+    expose:
+      - "80"
+
+volumes:
+  caddy_data:
+  caddy_config:
+  obs_config:
+  api_data:

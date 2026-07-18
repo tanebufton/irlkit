@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and fill in. Then: terraform init && terraform apply
+hcloud_token   = "your-hetzner-cloud-api-token"
+ssh_public_key = "ssh-ed25519 AAAA... you@host"
+domain         = "irl.example.com"
+acme_email     = "me@example.com"
+owner_username = "owner"
+owner_password = "pick-a-strong-password"
+
+# ccx23 = 4 dedicated vCPU (1080p60 minimum), ccx33 = 8 vCPU (comfortable)
+server_type = "ccx23"
+location    = "fsn1"
+
+# Point this at your fork once pushed.
+repo_url = "https://github.com/YOU/irlkit.git"

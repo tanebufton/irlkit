@@ -1,0 +1,37 @@
+# irlkit edge proxy. TLS is automatic for a real hostname; a bare IP or
+# ".local"/"localhost" domain falls back to Caddy's internal CA (self-signed)
+# so local testing works without DNS.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$IRLKIT_DOMAIN} {
+	# Control-plane API (REST + auth). Keep the /api prefix — the API mounts its
+	# routes under it, and this matches the Vite dev proxy.
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	# Live stats / scene-state push (WebSocket).
+	handle /ws* {
+		reverse_proxy api:3000
+	}
+
+	# Low-latency preview: OBS WHIP-publishes the "preview" path into MediaMTX,
+	# the browser reads it back over WebRTC (WHEP) at /preview/whep.
+	handle /preview* {
+		reverse_proxy mediamtx:8889
+	}
+	# HLS fallback (strip /hls so MediaMTX sees its native /<path>/index.m3u8).
+	handle_path /hls/* {
+		reverse_proxy mediamtx:8888
+	}
+
+	# Everything else: the SPA (studio + remote control panel).
+	handle {
+		reverse_proxy web:80
+	}
+
+	encode gzip zstd
+}

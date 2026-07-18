@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Cloud-init user-data: provision irlkit unattended on first boot. Secrets are
+# generated on the box (never passed through Terraform state); only the domain,
+# email, and owner credentials come from Terraform vars.
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+apt-get install -y git curl gettext-base openssl
+
+git clone --depth 1 "${repo_url}" /opt/irlkit || (cd /opt/irlkit && git pull --ff-only)
+cd /opt/irlkit
+
+gen() { openssl rand -hex "$1"; }
+if [ ! -f .env ]; then
+  cp .env.example .env
+  set_env() { sed -i "s|^$1=.*|$1=$2|" .env; }
+  set_env IRLKIT_DOMAIN   "${domain}"
+  set_env ACME_EMAIL      "${acme_email}"
+  set_env OWNER_USERNAME  "${owner_username}"
+  set_env OWNER_PASSWORD  "${owner_password}"
+  set_env SESSION_SECRET  "$(gen 32)"
+  set_env STREAM_KEY      "$(gen 12)"
+  set_env OBS_WS_PASSWORD "$(gen 16)"
+fi
+
+# install.sh sees the prepared .env and runs fully non-interactively.
+bash install.sh

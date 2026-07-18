@@ -1,0 +1,9 @@
+{
+    "bitrate": ${OUTPUT_BITRATE_KBPS},
+    "keyint_sec": 2,
+    "preset": "${X264_PRESET}",
+    "profile": "high",
+    "tune": "zerolatency",
+    "rate_control": "CBR",
+    "x264opts": ""
+}

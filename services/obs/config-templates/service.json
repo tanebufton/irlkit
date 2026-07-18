@@ -1,0 +1,9 @@
+{
+    "type": "rtmp_custom",
+    "settings": {
+        "server": "${DEST_RTMP_URL}",
+        "key": "${DEST_STREAM_KEY}",
+        "use_auth": false,
+        "bwtest": false
+    }
+}

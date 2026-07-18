@@ -1,0 +1,52 @@
+# MediaMTX — RTMP ingest + low-latency browser preview (WebRTC/HLS).
+# SRT / SRTLA ingest is handled separately by SLS; MediaMTX here owns RTMP and
+# the preview plane that OBS WHIP-publishes into for the studio UI.
+
+logLevel: info
+logDestinations: [stdout]
+
+# Control/metrics API (used by the irlkit API to read publisher state).
+api: yes
+apiAddress: :9997
+
+# ── RTMP ingest ───────────────────────────────────────────────────────────────
+rtmp: yes
+rtmpAddress: :1935
+
+# ── Browser preview transports ─────────────────────────────────────────────────
+webrtc: yes
+webrtcAddress: :8889
+# Advertise the host's public IP for ICE; install.sh can pin additional hosts.
+webrtcLocalUDPAddress: :8189
+
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency
+hlsAlwaysRemux: yes
+
+# We manage SRT via SLS, not MediaMTX.
+srt: no
+
+# ── Auth: publishers must present the stream key as the password ───────────────
+# Anyone may *read* the preview from inside the box (Caddy is the only exposed
+# reader path); publishing requires the key.
+authInternalUsers:
+  - user: any
+    ips: []
+    permissions:
+      - action: read
+  - user: publish
+    pass: "${MTX_STREAM_KEY}"
+    ips: []
+    permissions:
+      - action: publish
+      - action: read
+
+paths:
+  # RTMP publishers land here: rtmp://HOST:1935/ingest
+  ingest:
+    source: publisher
+
+  # OBS WHIP-publishes its program preview here; browser reads it via WHEP.
+  preview:
+    source: publisher

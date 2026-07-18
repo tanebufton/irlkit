@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and fill in. Then: terraform init && terraform apply
+do_token       = "your-digitalocean-api-token"
+ssh_public_key = "ssh-ed25519 AAAA... you@host"
+domain         = "irl.example.com"
+acme_email     = "me@example.com"
+owner_username = "owner"
+owner_password = "pick-a-strong-password"
+
+# c-4 = 4 dedicated vCPU (1080p60 minimum), c-8 = 8 vCPU (comfortable)
+droplet_size = "c-4"
+region       = "ams3"
+
+# Point this at your fork once pushed.
+repo_url = "https://github.com/YOU/irlkit.git"
