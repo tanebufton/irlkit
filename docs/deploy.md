@@ -49,6 +49,15 @@ the $42/mo budget tier), and hands it a cloud-init script that installs Docker
 and brings the whole stack up unattended. Takes a few minutes end to end; the
 script prints the IP, a command to watch the build, and the owner login.
 
+**Region**: it asks interactively — press enter to auto-detect the closest
+region (times a real connection to DigitalOcean Spaces, the only DO service
+that still resolves per-region, since DO retired its old speedtest subdomains),
+type `list` to see every available region, or type a slug directly (e.g.
+`sfo3`). Set `IRLKIT_REGION=nyc3` to skip the prompt entirely for scripted runs.
+The auto-detect only times one representative region per continent
+(`nyc3 ams3 fra1 sgp1 blr1 syd1`); pick manually if you specifically want, say,
+`sfo3` over `sfo2`.
+
 Point a DNS **A record** at the printed IP (or skip it and use the IP directly
 over a self-signed cert). Tear down with `doctl compute droplet delete irlkit`.
 
@@ -59,10 +68,15 @@ outcome as `deploy-do.sh`, but declarative and reviewable if you want that.
 
 ```bash
 cd infra/terraform/digitalocean    # cheapest today — or infra/terraform/hetzner
-cp terraform.tfvars.example terraform.tfvars   # fill in token, domain, etc.
+cp terraform.tfvars.example terraform.tfvars   # fill in token, domain, region, etc.
 terraform init
 terraform apply
 ```
+
+Region is just the `region` variable in `terraform.tfvars` (no auto-detect here
+— this path is for repeatable, reviewable infra, so pick it deliberately; see
+the DigitalOcean region list or Hetzner's location list in each module's
+`variables.tf` comment).
 
 Then create a DNS **A record** for your `domain` pointing at the `ipv4` output and
 wait ~5 minutes for images to build and TLS to issue. Visit `https://<domain>`.
@@ -110,9 +124,50 @@ your provider's firewall or `ufw` for you.
 cd /opt/irlkit
 docker compose ps                 # service health
 docker compose logs -f obs        # e.g. watch OBS boot / encoding
-docker compose restart obs        # apply encoder preset/bitrate changes
 git pull && docker compose up -d --build   # update
 ```
+
+To change `ENCODER_PRESET` / `OUTPUT_BITRATE_KBPS` (or any other `.env` value),
+edit `.env` then run `docker compose up -d obs` — **not** `docker compose
+restart obs`. `restart` reuses the container's already-baked-in environment and
+won't see the edit at all; `up -d` re-reads `.env` and recreates the container
+with the new value. (Note: the studio UI's "Save encoder" panel currently
+persists your choice for reference but doesn't yet push it into the running OBS
+container automatically — edit `.env` directly until that wiring lands.)
+
+## Lost your owner login?
+
+SSH into the box and run the recovery script from the checkout:
+
+```bash
+cd /opt/irlkit
+./reset-password.sh                     # new random owner password, same username
+./reset-password.sh --password 'x'      # or set a specific one
+./reset-password.sh --username mod2     # change the username too
+```
+
+It only recreates the `api` container, so an active stream is untouched. Two
+extra flags for less common cases:
+
+- `--obs` — also rotates the OBS-websocket password. This is the credential
+  the api/noalbs containers use to control OBS internally; it's never been
+  reachable from outside the box (see below), so you'd only need this if you
+  suspect the box itself was compromised. **It restarts OBS, which interrupts
+  a live stream** — the script warns and asks to confirm unless you pass `-y`.
+- `--revoke-sessions` — rotates `SESSION_SECRET`, which invalidates every
+  existing owner session *and every operator share link* immediately. Use this
+  if you think a session or a share link leaked; otherwise a plain password
+  reset already stops the old password from working, existing sessions just
+  age out on their own (7 days).
+
+**Is OBS itself locked down the same way?** Yes, by two independent layers:
+`docker-compose.yml` only `expose`s OBS's websocket port (4455) rather than
+publishing it, so it's unreachable from outside the Docker host at all — only
+the `api` and `noalbs` containers on the same internal network can reach it.
+On top of that, OBS's websocket still requires its own password even for those
+internal callers (`auth_required: true`, a random 16-byte secret generated at
+install time). So there's no public surface to lock down further; `--obs`
+above exists for completeness, not because it was ever exposed.
 
 ## Troubleshooting
 

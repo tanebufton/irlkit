@@ -23,11 +23,68 @@ NAME="${IRLKIT_NAME:-irlkit}"
 # c-2 = 2 vCPU/4GB (~$42/mo, budget floor). c-4 = 4 vCPU/8GB (~$84/mo, recommended
 # for reliable 1080p60). See docs/deploy.md for current pricing across providers.
 SIZE="${IRLKIT_SIZE:-c-4}"
-REGION="${IRLKIT_REGION:-nyc3}"
 IMAGE="ubuntu-24-04-x64"
 
-log "Sizing: $SIZE in $REGION. Override with IRLKIT_SIZE / IRLKIT_REGION env vars."
-log "(doctl compute size list | grep '^c-'  and  doctl compute region list  to see other options)"
+log "Sizing: $SIZE. Override with IRLKIT_SIZE (see docs/deploy.md for tiers)."
+
+# ── Region ────────────────────────────────────────────────────────────────
+# DigitalOcean retired its official per-region speedtest subdomains, but Spaces
+# still resolves per-region (the only DO service that does), so we time a real
+# TCP connection to each Spaces-enabled region as a stand-in for ping. That
+# covers one region per continent; anything more specific (e.g. sfo3 vs sfo2)
+# still needs a manual pick.
+SPACES_REGIONS=(nyc3 ams3 fra1 sgp1 blr1 syd1)
+
+list_regions() {
+  doctl compute region list --format Slug,Name,Available --no-header | awk '$NF=="true"'
+}
+
+probe_closest_region() {
+  log "Timing a connection to each region (via DigitalOcean Spaces)…" >&2
+  local best="" best_ms=999999 r ms ms_int
+  for r in "${SPACES_REGIONS[@]}"; do
+    ms="$(curl -o /dev/null -s -m 3 -w '%{time_connect}' "https://${r}.digitaloceanspaces.com/" 2>/dev/null || true)"
+    if [ -n "$ms" ]; then
+      ms_int="$(awk -v t="$ms" 'BEGIN{printf "%d", t*1000}')"
+      printf '    %-6s %sms\n' "$r" "$ms_int" >&2
+      if [ "$ms_int" -lt "$best_ms" ]; then best_ms="$ms_int"; best="$r"; fi
+    else
+      printf '    %-6s (unreachable)\n' "$r" >&2
+    fi
+  done
+  [ -n "$best" ] || die "Couldn't reach any region to time — check your connection or set IRLKIT_REGION yourself."
+  log "Closest: $best (~${best_ms}ms round-trip to its Spaces endpoint)" >&2
+  echo "$best"
+}
+
+pick_region() {
+  if [ -n "${IRLKIT_REGION:-}" ]; then
+    echo "$IRLKIT_REGION"
+    return
+  fi
+  while true; do
+    read -rp "Region [enter = auto-detect closest, 'list' = see all, or type a slug e.g. nyc3]: " ans || true
+    case "${ans:-}" in
+      "")
+        probe_closest_region
+        return
+        ;;
+      list)
+        list_regions >&2
+        ;;
+      *)
+        if list_regions | awk '{print $1}' | grep -qx "$ans"; then
+          echo "$ans"
+          return
+        fi
+        warn "'$ans' isn't a currently-available region slug. Try 'list' to see valid ones."
+        ;;
+    esac
+  done
+}
+
+REGION="$(pick_region)"
+log "Using region: $REGION"
 
 read -rp "Domain (DNS A record -> this droplet) [blank = IP-only test, self-signed TLS]: " DOMAIN || true
 read -rp "Let's Encrypt email [me@example.com]: " EMAIL || true

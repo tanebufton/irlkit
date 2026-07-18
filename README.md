@@ -31,6 +31,9 @@ doctl auth init      # once, with a DO API token
 ./deploy-do.sh        # creates the droplet, firewall, and installs everything
 ```
 
+It'll ask which region — press enter to auto-detect the closest one, or pick
+manually. See [`docs/deploy.md`](docs/deploy.md) for details.
+
 **Any other provider / already have a server?** SSH in and run:
 
 ```bash
@@ -74,6 +77,7 @@ the full plan in the repo history.
 | `docker-compose.yml` | the whole stack |
 | `install.sh` | one-command installer (any provider/server) |
 | `deploy-do.sh` | one-command provision + install on DigitalOcean via `doctl` |
+| `reset-password.sh` | recover the owner login (and OBS-websocket password) if lost |
 | `infra/` | Terraform (DigitalOcean + Hetzner) and the shared cloud-init bootstrap |
 | `Caddyfile` | TLS edge + routing |
 | `services/ingest/` | MediaMTX (RTMP), SLS (SRT), srtla (bonding) |
@@ -81,7 +85,6 @@ the full plan in the repo history.
 | `services/noalbs/` | auto scene-switch config |
 | `apps/api/` | Fastify control-plane API (obs-websocket, auth, stats) |
 | `apps/web/` | React studio + remote control panel |
-| `infra/` | Terraform + cloud-init for Hetzner / DigitalOcean |
 
 ## Status
 
