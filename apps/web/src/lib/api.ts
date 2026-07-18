@@ -14,7 +14,11 @@ export function getBearer() {
 
 async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    // Only claim a JSON body when we're actually sending one — Fastify
+    // rejects a request with Content-Type: application/json and zero bytes
+    // of body (FST_ERR_CTP_EMPTY_JSON_BODY), which every no-body POST here
+    // (logout, start/stop stream, revoke token, …) would otherwise hit.
+    ...(init.body ? { "Content-Type": "application/json" } : {}),
     ...(init.headers as Record<string, string>),
   };
   if (bearer) headers.Authorization = `Bearer ${bearer}`;
@@ -68,8 +72,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ sceneName, inputName, type, settings }),
     }),
+  getDestination: () => req<{ server: string; key: string }>("/studio/destination"),
   setDestination: (server: string, key: string) =>
     req("/studio/destination", { method: "POST", body: JSON.stringify({ server, key }) }),
+  getEncoder: () => req<{ preset: string; bitrateKbps: number }>("/studio/encoder"),
   setEncoder: (preset: string, bitrateKbps?: number) =>
     req("/studio/encoder", { method: "POST", body: JSON.stringify({ preset, bitrateKbps }) }),
 

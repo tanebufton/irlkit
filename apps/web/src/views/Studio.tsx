@@ -91,6 +91,22 @@ export function Studio({ onLogout }: { onLogout: () => void }) {
   const [preset, setPreset] = useState("balanced");
   const [bitrate, setBitrate] = useState(6000);
 
+  // Load whatever's currently configured, so a refresh doesn't show blank
+  // fields for settings that are actually already saved.
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [dest, enc] = await Promise.all([api.getDestination(), api.getEncoder()]);
+        setDestUrl(dest.server);
+        setDestKey(dest.key);
+        setPreset(enc.preset);
+        setBitrate(enc.bitrateKbps);
+      } catch {
+        // Non-fatal — leave the form at its blank defaults.
+      }
+    })();
+  }, []);
+
   return (
     <div className="mx-auto max-w-3xl p-4 space-y-4">
       <header className="flex items-center justify-between">

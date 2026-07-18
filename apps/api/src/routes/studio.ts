@@ -4,7 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { obs } from "../obs.js";
 import { requireOwner } from "../auth.js";
-import { setSetting } from "../db.js";
+import { getSetting, setSetting } from "../db.js";
 
 // Friendly source types → OBS input kinds (Linux / OBS 30).
 const KIND_MAP: Record<string, string> = {
@@ -58,6 +58,22 @@ export async function studioRoutes(app: FastifyInstance) {
     if (!body.success) return reply.code(400).send({ error: body.error.message });
     await obs.setInputSettings(body.data.inputName, body.data.settings);
     return { ok: true };
+  });
+
+  // Current destination/encoder settings, so the studio can populate its form
+  // on load instead of always showing blank fields after a refresh.
+  app.get("/studio/destination", async () => {
+    return {
+      server: getSetting("dest_rtmp_url") ?? "",
+      key: getSetting("dest_stream_key") ?? "",
+    };
+  });
+
+  app.get("/studio/encoder", async () => {
+    return {
+      preset: getSetting("encoder_preset") ?? "balanced",
+      bitrateKbps: Number(getSetting("output_bitrate_kbps") ?? 6000),
+    };
   });
 
   // Where the finished program is sent. Applied to OBS immediately and persisted
